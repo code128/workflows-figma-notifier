@@ -1,0 +1,24 @@
+main:
+    steps:
+    - getTheCurrentFigmaStatusReport:
+        call: http.get
+        args:
+            url: https://status.figma.com/history.json
+        result: figStatus
+    - checkFigStatus:
+        switch:
+         - condition: ${figStatus.body.components[0].status != "operational"}
+           next: figDown
+         - condition: ${figStatus.body.components[1].status != "operational"}
+           next: figDown
+         - condition: ${figStatus.body.components[2].status != "operational"}
+           next: figDown
+        next: figUp
+    - figUp:
+       return: ${"Figma IS NOT reporting any outages"}
+    - figDown:
+        call: http.post
+        args:
+          url: https://chat.googleapis.com/v1/spaces/AAAAiEJGKVE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=R4_3sYjjsy6Bj5ph8u3_C5BL9PD-m0KukhXcLtNiBVA%3D
+          body:
+            text: "UH OH.... Figma is currently reporting an outage. More details available here https://status.figma.com/#"
