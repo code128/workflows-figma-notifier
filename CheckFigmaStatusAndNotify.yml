@@ -4,6 +4,17 @@ main:
         assign:
         - outage_message: "UH OH.... Figma is currently reporting an outage. More details available here https://status.figma.com/#"
         - chat_url: https://chat.googleapis.com/v1/spaces/AAAAn4yZytI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Nf3NbLBr8Nd8YAup4dzyBGE8nqpzn5Szvk4K18cTRy8%3D
+        - info_bucket: "workflows-example-data"
+    - get_last_run_data:
+        call: googleapis.storage.v1.buckets.get
+        args:
+          bucket: ${info_bucket}
+        result: getResult
+    - logStep:
+        call: sys.log
+        args:
+          text: ${json.encode_to_string(getResult)}
+          severity: "INFO"         
     - getTheCurrentFigmaStatusReport:
         call: http.get
         args:
@@ -11,7 +22,7 @@ main:
         result: figStatus
     - checkFigStatus:
         switch:
-         - condition: ${figStatus.body.components[0].status == "operational"}
+         - condition: ${figStatus.body.components[0].status != "operational"}
            next: figDown
          - condition: ${figStatus.body.components[1].status != "operational"}
            next: figDown
