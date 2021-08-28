@@ -3,37 +3,65 @@ main:
     - variable_declarations:
         assign:
         - outage_message: "UH OH.... Figma is currently reporting an outage. More details available here https://status.figma.com/#"
-        - chat_url: https://chat.googleapis.com/v1/spaces/AAAAn4yZytI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Nf3NbLBr8Nd8YAup4dzyBGE8nqpzn5Szvk4K18cTRy8%3D
+        - google_chat_webhook: https://chat.googleapis.com/v1/spaces/AAAAn4yZytI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Nf3NbLBr8Nd8YAup4dzyBGE8nqpzn5Szvk4K18cTRy8%3D
         - info_bucket: "workflows-example-data"
     - get_last_run_data:
         call: googleapis.storage.v1.buckets.get
         args:
           bucket: ${info_bucket}
-        result: getResult
-    - logStep:
-        call: sys.log
-        args:
-          text: ${json.encode_to_string(getResult)}
-          severity: "INFO"         
-    - getTheCurrentFigmaStatusReport:
+        result: bucketMetaData
+    - assign_last_check_variables:
+        assign:
+          - last_check0: ${bucketMetaData.labels["fig_status0"]}
+          - last_check1: ${bucketMetaData.labels["fig_status1"]}
+          - last_check2: ${bucketMetaData.labels["fig_status2"]}
+    - getCurrentFigmaStatus:
         call: http.get
         args:
             url: https://status.figma.com/history.json
         result: figStatus
+    - assign_current_check_status:
+        assign:
+          - fig_status0: ${figStatus.body.components[0].status}
+          - fig_status1: ${figStatus.body.components[1].status}
+          - fig_status2: ${figStatus.body.components[2].status}
+    - set_last_run_data:
+        call: googleapis.storage.v1.buckets.patch
+        args:
+          bucket: ${info_bucket}
+          body:
+            labels: {
+                      "fig_status0": '${fig_status0}',
+                      "fig_status1": '${fig_status1}',
+                      "fig_status2": '${fig_status2}'
+                    }
+        result: bucketMetaData
+        #TODO: ADD ANOTHER CHECK HERE TO MAKE SURE THE LAST STATUS ISNT NONOPERATIONAL 
     - checkFigStatus:
         switch:
-         - condition: ${figStatus.body.components[0].status != "operational"}
-           next: figDown
-         - condition: ${figStatus.body.components[1].status != "operational"}
-           next: figDown
-         - condition: ${figStatus.body.components[2].status != "operational"}
-           next: figDown
-        next: figUp
-    - figUp:
-       return: ${"Figma IS NOT reporting any outages"}
-    - figDown:
+         - condition: ${fig_status0 != "operational" and last_check0 == "operational"}
+           next: figmaIsDown
+         - condition: ${fig_status1 != "operational" and last_check1 == "operational"}
+           next: figmaIsDown
+         - condition: ${fig_status2 != "operational" and last_check2 == "operational"}
+           next: figmaIsDown
+        next: figmaIsUp
+
+    # - logStep:
+    #     call: sys.log
+    #     args:
+    #       text: ${json.encode_to_string(bucketMetaData.labels["fig_status2"])}
+    #       severity: "INFO"
+    # - logStep1:
+    #     call: sys.log
+    #     args:
+    #       text: ${json.encode_to_string(last_check2)}
+    #       severity: "INFO"
+    - figmaIsUp:
+       return: ${"Check complete, Figma IS NOT reporting outages"}
+    - figmaIsDown:
         call: http.post
         args:
-          url: ${chat_url}
+          url: ${google_chat_webhook}
           body:
             text: ${outage_message}
