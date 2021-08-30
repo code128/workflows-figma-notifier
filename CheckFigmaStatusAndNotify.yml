@@ -36,7 +36,6 @@ main:
                       "fig_status2": '${fig_status2}'
                     }
         result: bucketMetaData
-        #TODO: ADD ANOTHER CHECK HERE TO MAKE SURE THE LAST STATUS ISNT NONOPERATIONAL 
     - checkFigStatus:
         switch:
          - condition: ${fig_status0 != "operational" and last_check0 == "operational"}
@@ -46,17 +45,6 @@ main:
          - condition: ${fig_status2 != "operational" and last_check2 == "operational"}
            next: figmaIsDown
         next: figmaIsUp
-
-    # - logStep:
-    #     call: sys.log
-    #     args:
-    #       text: ${json.encode_to_string(bucketMetaData.labels["fig_status2"])}
-    #       severity: "INFO"
-    # - logStep1:
-    #     call: sys.log
-    #     args:
-    #       text: ${json.encode_to_string(last_check2)}
-    #       severity: "INFO"
     - figmaIsUp:
        return: ${"Check complete, Figma IS NOT reporting outages"}
     - figmaIsDown:
