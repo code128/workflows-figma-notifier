@@ -1,9 +1,9 @@
 main:
+    params: [runtime_vars]
     steps:
     - variable_declarations:
         assign:
         - outage_message: "UH OH.... Figma is currently reporting an outage. More details available here https://status.figma.com/#"
-        - google_chat_webhook: https://chat.googleapis.com/v1/spaces/AAAAIud9I10/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=1HZrD3qsD1cI-PVmYZvg1fW3OmxPuRAOG-E3T5uK0T8%3D
         - info_bucket: "workflows-example-data"
     - get_last_run_data:
         call: googleapis.storage.v1.buckets.get
@@ -48,8 +48,12 @@ main:
     - figmaIsUp:
        return: ${"Check complete"}
     - figmaIsDown:
-        call: http.post
-        args:
-          url: ${google_chat_webhook}
-          body:
-            text: ${outage_message}
+        for:
+          value: url
+          in: ${runtime_vars.notification_url_list}
+          steps:
+            call: http.post
+            args:
+              url: ${google_chat_webhook}
+              body:
+                text: ${outage_message}
