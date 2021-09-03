@@ -52,8 +52,9 @@ main:
           value: url
           in: ${runtime_vars.notification_url_list}
           steps:
-            call: http.post
-            args:
-              url: ${google_chat_webhook}
-              body:
-                text: ${outage_message}
+            - step1:
+                call: http.post
+                args:
+                  url: ${url}
+                  body:
+                    text: ${outage_message}
